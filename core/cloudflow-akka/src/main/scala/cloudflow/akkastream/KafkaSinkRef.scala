@@ -30,6 +30,7 @@ import akka.stream.scaladsl._
 import org.apache.kafka.clients.producer.{ Callback, RecordMetadata }
 
 import cloudflow.streamlets._
+import KafkaHelper._
 
 final class KafkaSinkRef[T](
     system: ActorSystem,
@@ -41,8 +42,7 @@ final class KafkaSinkRef[T](
     extends WritableSinkRef[T]
     with ProducerHelper {
 
-  private val producerSettings: ProducerSettings[Array[Byte], Array[Byte]] =
-    producerSettings(topic, bootstrapServers)(system)
+  private val producerSettings = makeProducerSettings(topic, bootstrapServers)(system)
   private val producer = producerSettings.createKafkaProducer()
 
   def sink: Sink[(T, Committable), NotUsed] = {

@@ -42,6 +42,7 @@ import cloudflow.streamlets._
 import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.{ DurationInt, FiniteDuration }
+import KafkaHelper._
 
 /**
  * Implementation of the StreamletContext trait.
@@ -51,6 +52,7 @@ protected final class AkkaStreamletContextImpl(
     private[cloudflow] override val streamletDefinition: StreamletDefinition,
     sys: ActorSystem)
     extends AkkaStreamletContext
+    with ConsumerHelper
     with ProducerHelper {
   private val log = LoggerFactory.getLogger(classOf[AkkaStreamletContextImpl])
   private val streamletDefinitionMsg: String =
@@ -217,7 +219,7 @@ protected final class AkkaStreamletContextImpl(
           ProducerMessage.Message(producerRecord(outlet, topic, value), committable)
       }
       .via(handleTermination)
-      .toMat(Producer.committableSink(producerSettings(topic, runtimeBootstrapServers(topic)), committerSettings))(
+      .toMat(Producer.committableSink(makeProducerSettings(topic, runtimeBootstrapServers(topic)), committerSettings))(
         Keep.left)
   }
 
@@ -234,7 +236,7 @@ protected final class AkkaStreamletContextImpl(
           ProducerMessage.MultiMessage(values.map(value => producerRecord(outlet, topic, value)), committable)
       }
       .via(handleTermination)
-      .via(Producer.flexiFlow(producerSettings(topic, runtimeBootstrapServers(topic))))
+      .via(Producer.flexiFlow(makeProducerSettings(topic, runtimeBootstrapServers(topic))))
       .map(results => ((), results.passThrough))
   }
 
@@ -248,7 +250,7 @@ protected final class AkkaStreamletContextImpl(
         case (value, committable) =>
           ProducerMessage.Message(producerRecord(outlet, topic, value), committable)
       }
-      .toMat(Producer.committableSink(producerSettings(topic, runtimeBootstrapServers(topic)), committerSettings))(
+      .toMat(Producer.committableSink(makeProducerSettings(topic, runtimeBootstrapServers(topic)), committerSettings))(
         Keep.left)
   }
 
@@ -331,7 +333,7 @@ protected final class AkkaStreamletContextImpl(
         producerRecord(outlet, topic, value)
       }
       .via(handleTermination)
-      .to(Producer.plainSink(producerSettings(topic, runtimeBootstrapServers(topic))))
+      .to(Producer.plainSink(makeProducerSettings(topic, runtimeBootstrapServers(topic))))
       .mapMaterializedValue(_ => NotUsed)
   }
 
@@ -425,46 +427,4 @@ protected final class AkkaStreamletContextImpl(
       "app-id" -> streamletDefinition.appId,
       "app-version" -> streamletDefinition.appVersion,
       "streamlet-ref" -> streamletRef)
-
-  /**
-   * Helper function to encapsulate common logic
-   */
-  protected def groupId[T](inlet: CodecInlet[T], topic: Topic): String =
-    topic.groupId(streamletDefinition.appId, streamletRef, inlet)
-
-  protected def makeConsumerSettings[T](
-      inlet: CodecInlet[T],
-      offsetReset: String): (Topic, ConsumerSettings[Array[Byte], Array[Byte]]) = {
-    val topic = findTopicForPort(inlet)
-
-    (
-      topic,
-      ConsumerSettings(system, new ByteArrayDeserializer, new ByteArrayDeserializer)
-        .withBootstrapServers(runtimeBootstrapServers(topic))
-        .withGroupId(groupId(inlet, topic))
-        .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, offsetReset)
-        .withProperties(topic.kafkaConsumerProperties))
-  }
-}
-
-trait ProducerHelper {
-
-  protected def keyBytes(key: String) = if (key != null) key.getBytes(StandardCharsets.UTF_8) else null
-
-  protected def producerRecord[T](
-      outlet: CodecOutlet[T],
-      topic: Topic,
-      value: T): ProducerRecord[Array[Byte], Array[Byte]] = {
-    val key = outlet.partitioner(value)
-    val bytesKey = keyBytes(key)
-    val bytesValue = outlet.codec.encode(value)
-    new ProducerRecord(topic.name, bytesKey, bytesValue)
-  }
-
-  def producerSettings(topic: Topic, bootstrapServers: String)(
-      implicit system: ActorSystem): ProducerSettings[Array[Byte], Array[Byte]] =
-    ProducerSettings(system, new ByteArraySerializer, new ByteArraySerializer)
-      .withBootstrapServers(bootstrapServers)
-      .withProperties(topic.kafkaProducerProperties)
-
 }

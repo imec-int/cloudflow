@@ -88,6 +88,9 @@ trait StreamletContext {
       ConfigFactory.empty()
   }
 
+  protected def groupId[T](inlet: CodecInlet[T], topic: Topic): String =
+    topic.groupId(streamletDefinition.appId, streamletRef, inlet)
+
   /**
    * The path mounted for a VolumeMount request from a streamlet.
    * In a clustered deployment, the mounted path will correspond to the requested mount path in the
