@@ -45,13 +45,18 @@ final class KafkaSinkRef[T](
   private val producerSettings = createProducerSettings(topic, bootstrapServers)(system)
   private val producer = producerSettings.createKafkaProducer()
 
+  def findTopicForPort(port: StreamletPort): Topic = {
+    assert(port == outlet, s"Unexpected port $outlet")
+    topic
+  }
+
   def sink: Sink[(T, Committable), NotUsed] = {
     system.log.info(s"Creating sink for topic: $topic")
 
     Flow[(T, Committable)]
       .map {
         case (value, offset) =>
-          ProducerMessage.Message(producerRecord(outlet, topic, value), offset)
+          ProducerMessage.Message(encode(outlet, value), offset)
       }
       .via(Producer.flexiFlow(producerSettings.withProducer(producer)))
       .via(handleTermination)
@@ -74,7 +79,7 @@ final class KafkaSinkRef[T](
   def write(value: T): Future[T] = {
     val promise = Promise[T]()
 
-    producer.send(producerRecord(outlet, topic, value), new Callback() {
+    producer.send(encode(outlet, value), new Callback() {
       def onCompletion(metadata: RecordMetadata, exception: Exception) {
         if (exception == null) promise.success(value)
         else promise.failure(exception)

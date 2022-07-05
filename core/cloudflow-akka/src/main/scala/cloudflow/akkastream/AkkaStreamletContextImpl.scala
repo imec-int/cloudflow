@@ -16,10 +16,8 @@
 
 package cloudflow.akkastream
 
-import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
-
 import scala.collection.immutable
 import scala.concurrent._
 import scala.util._
@@ -35,9 +33,6 @@ import akka.kafka.scaladsl._
 import akka.stream.scaladsl._
 import cloudflow.akkastream.internal.{ HealthCheckFiles, StreamletExecutionImpl }
 import com.typesafe.config._
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.serialization._
 import cloudflow.streamlets._
 import org.slf4j.LoggerFactory
 
@@ -132,11 +127,7 @@ protected final class AkkaStreamletContextImpl(
         KafkaControls.add(c)
         NotUsed
       }
-      .map(record =>
-        inlet.codec.decode(record.value) match {
-          case Success(value) => Some(value)
-          case Failure(t)     => inlet.errorHandler(record.value, t)
-        })
+      .map(decode(inlet, _))
       .collect { case Some(v) => v }
       .via(handleTermination)
   }
@@ -183,11 +174,7 @@ protected final class AkkaStreamletContextImpl(
               KafkaControls.add(c)
               NotUsed
             }
-            .map(record =>
-              inlet.codec.decode(record.value) match {
-                case Success(value) => Some(value)
-                case Failure(t)     => inlet.errorHandler(record.value, t)
-              })
+            .map(decode(inlet, _))
             .collect { case Some(v) => v }
             .via(handleTermination)
             .asSource
@@ -216,11 +203,11 @@ protected final class AkkaStreamletContextImpl(
     Flow[(T, Committable)]
       .map {
         case (value, committable) =>
-          ProducerMessage.Message(producerRecord(outlet, topic, value), committable)
+          ProducerMessage.Message(encode(outlet, value), committable)
       }
       .via(handleTermination)
-      .toMat(Producer.committableSink(createProducerSettings(topic, runtimeBootstrapServers(topic)), committerSettings))(
-        Keep.left)
+      .toMat(Producer
+        .committableSink(createProducerSettings(topic, runtimeBootstrapServers(topic)), committerSettings))(Keep.left)
   }
 
   def committableSink[T](committerSettings: CommitterSettings): Sink[(T, Committable), NotUsed] =
@@ -233,7 +220,7 @@ protected final class AkkaStreamletContextImpl(
     Flow[(immutable.Seq[T], Committable)]
       .map {
         case (values, committable) =>
-          ProducerMessage.MultiMessage(values.map(value => producerRecord(outlet, topic, value)), committable)
+          ProducerMessage.MultiMessage(values.map(value => encode(outlet, value)), committable)
       }
       .via(handleTermination)
       .via(Producer.flexiFlow(createProducerSettings(topic, runtimeBootstrapServers(topic))))
@@ -248,10 +235,10 @@ protected final class AkkaStreamletContextImpl(
     Flow[(T, CommittableOffset)]
       .map {
         case (value, committable) =>
-          ProducerMessage.Message(producerRecord(outlet, topic, value), committable)
+          ProducerMessage.Message(encode(outlet, value), committable)
       }
-      .toMat(Producer.committableSink(createProducerSettings(topic, runtimeBootstrapServers(topic)), committerSettings))(
-        Keep.left)
+      .toMat(Producer
+        .committableSink(createProducerSettings(topic, runtimeBootstrapServers(topic)), committerSettings))(Keep.left)
   }
 
   private[akkastream] def sinkWithOffsetContext[T](
@@ -268,11 +255,7 @@ protected final class AkkaStreamletContextImpl(
         NotUsed
       }
       .via(handleTermination)
-      .map(record =>
-        inlet.codec.decode(record.value) match {
-          case Success(value) => Some(value)
-          case Failure(t)     => inlet.errorHandler(record.value, t)
-        })
+      .map(decode(inlet, _))
       .collect { case Some(v) => v }
   }
 
@@ -315,11 +298,7 @@ protected final class AkkaStreamletContextImpl(
               NotUsed
             }
             .via(handleTermination)
-            .map(record =>
-              inlet.codec.decode(record.value) match {
-                case Success(value) => Some(value)
-                case Failure(t)     => inlet.errorHandler(record.value, t)
-              })
+            .map(decode(inlet, _))
             .collect { case Some(v) => v }
         }(system.dispatcher)
       }
@@ -330,7 +309,7 @@ protected final class AkkaStreamletContextImpl(
 
     Flow[T]
       .map { value =>
-        producerRecord(outlet, topic, value)
+        encode(outlet, value)
       }
       .via(handleTermination)
       .to(Producer.plainSink(createProducerSettings(topic, runtimeBootstrapServers(topic))))
