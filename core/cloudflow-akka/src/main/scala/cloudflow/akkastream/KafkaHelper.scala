@@ -3,12 +3,12 @@ package cloudflow.akkastream
 import akka.actor.ActorSystem
 import akka.annotation.InternalApi
 import akka.kafka.{ ConsumerSettings, ProducerSettings }
-import cloudflow.streamlets.{ CodecInlet, CodecOutlet, StreamletContext, Topic }
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.{ ByteArrayDeserializer, ByteArraySerializer }
 
 import java.nio.charset.StandardCharsets
+import cloudflow.streamlets._
 
 /**
  * Helper function to encapsulate common logic
@@ -17,7 +17,11 @@ object KafkaHelper {
 
   @InternalApi
   trait ConsumerHelper {
-    self: StreamletContext =>
+    self: {
+      def findTopicForPort(port: StreamletPort): Topic
+      def groupId[T](inlet: CodecInlet[T], topic: Topic): String
+      def runtimeBootstrapServers(topic: Topic): String
+    } =>
 
     protected def makeConsumerSettings[T](inlet: CodecInlet[T], offsetReset: String)(
         implicit system: ActorSystem): (Topic, ConsumerSettings[Array[Byte], Array[Byte]]) = {
