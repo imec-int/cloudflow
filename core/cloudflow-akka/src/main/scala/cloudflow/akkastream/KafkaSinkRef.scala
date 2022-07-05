@@ -42,7 +42,7 @@ final class KafkaSinkRef[T](
     extends WritableSinkRef[T]
     with ProducerHelper {
 
-  private val producerSettings = makeProducerSettings(topic, bootstrapServers)(system)
+  private val producerSettings = createProducerSettings(topic, bootstrapServers)(system)
   private val producer = producerSettings.createKafkaProducer()
 
   def sink: Sink[(T, Committable), NotUsed] = {

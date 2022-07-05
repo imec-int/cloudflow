@@ -23,10 +23,9 @@ object KafkaHelper {
       def runtimeBootstrapServers(topic: Topic): String
     } =>
 
-    protected def makeConsumerSettings[T](inlet: CodecInlet[T], offsetReset: String)(
+    protected def createConsumerSettings[T](inlet: CodecInlet[T], offsetReset: String)(
         implicit system: ActorSystem): (Topic, ConsumerSettings[Array[Byte], Array[Byte]]) = {
       val topic = findTopicForPort(inlet)
-
       (
         topic,
         ConsumerSettings(system, new ByteArrayDeserializer, new ByteArrayDeserializer)
@@ -52,11 +51,10 @@ object KafkaHelper {
       new ProducerRecord(topic.name, bytesKey, bytesValue)
     }
 
-    def makeProducerSettings(topic: Topic, bootstrapServers: String)(
+    def createProducerSettings(topic: Topic, bootstrapServers: String)(
         implicit system: ActorSystem): ProducerSettings[Array[Byte], Array[Byte]] =
       ProducerSettings(system, new ByteArraySerializer, new ByteArraySerializer)
         .withBootstrapServers(bootstrapServers)
         .withProperties(topic.kafkaProducerProperties)
-
   }
 }

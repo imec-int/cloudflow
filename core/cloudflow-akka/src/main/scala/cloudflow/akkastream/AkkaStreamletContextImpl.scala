@@ -122,7 +122,7 @@ protected final class AkkaStreamletContextImpl(
 
   // internal implementation that uses the CommittableOffset implementation to provide access to the underlying offsets
   private[akkastream] def sourceWithContext[T](inlet: CodecInlet[T]): SourceWithContext[T, CommittableOffset, _] = {
-    val (topic, consumerSettings) = makeConsumerSettings(inlet, "earliest")
+    val (topic, consumerSettings) = createConsumerSettings(inlet, "earliest")
 
     system.log.info(s"Creating committable source for group: ${groupId(inlet, topic)} topic: ${topic.name}")
 
@@ -150,7 +150,7 @@ protected final class AkkaStreamletContextImpl(
       shardEntity: Entity[M, E],
       kafkaTimeout: FiniteDuration = 10.seconds): SourceWithContext[T, CommittableOffset, Future[NotUsed]] = {
 
-    val (topic, consumerSettings) = makeConsumerSettings(inlet, "earliest")
+    val (topic, consumerSettings) = createConsumerSettings(inlet, "earliest")
 
     val rebalanceListener: akka.actor.typed.ActorRef[ConsumerRebalanceEvent] =
       KafkaClusterSharding(system).rebalanceListener(shardEntity.typeKey)
@@ -219,7 +219,7 @@ protected final class AkkaStreamletContextImpl(
           ProducerMessage.Message(producerRecord(outlet, topic, value), committable)
       }
       .via(handleTermination)
-      .toMat(Producer.committableSink(makeProducerSettings(topic, runtimeBootstrapServers(topic)), committerSettings))(
+      .toMat(Producer.committableSink(createProducerSettings(topic, runtimeBootstrapServers(topic)), committerSettings))(
         Keep.left)
   }
 
@@ -236,7 +236,7 @@ protected final class AkkaStreamletContextImpl(
           ProducerMessage.MultiMessage(values.map(value => producerRecord(outlet, topic, value)), committable)
       }
       .via(handleTermination)
-      .via(Producer.flexiFlow(makeProducerSettings(topic, runtimeBootstrapServers(topic))))
+      .via(Producer.flexiFlow(createProducerSettings(topic, runtimeBootstrapServers(topic))))
       .map(results => ((), results.passThrough))
   }
 
@@ -250,7 +250,7 @@ protected final class AkkaStreamletContextImpl(
         case (value, committable) =>
           ProducerMessage.Message(producerRecord(outlet, topic, value), committable)
       }
-      .toMat(Producer.committableSink(makeProducerSettings(topic, runtimeBootstrapServers(topic)), committerSettings))(
+      .toMat(Producer.committableSink(createProducerSettings(topic, runtimeBootstrapServers(topic)), committerSettings))(
         Keep.left)
   }
 
@@ -259,7 +259,7 @@ protected final class AkkaStreamletContextImpl(
     Flow[(T, CommittableOffset)].toMat(Committer.sinkWithOffsetContext(committerSettings))(Keep.left)
 
   def plainSource[T](inlet: CodecInlet[T], resetPosition: ResetPosition = Latest): Source[T, NotUsed] = {
-    val (topic, consumerSettings) = makeConsumerSettings(inlet, resetPosition.autoOffsetReset)
+    val (topic, consumerSettings) = createConsumerSettings(inlet, resetPosition.autoOffsetReset)
 
     Consumer
       .plainSource(consumerSettings, Subscriptions.topics(topic.name))
@@ -282,7 +282,7 @@ protected final class AkkaStreamletContextImpl(
       resetPosition: ResetPosition = Latest,
       kafkaTimeout: FiniteDuration = 10.seconds): Source[T, Future[NotUsed]] = {
 
-    val (topic, consumerSettings) = makeConsumerSettings(inlet, resetPosition.autoOffsetReset)
+    val (topic, consumerSettings) = createConsumerSettings(inlet, resetPosition.autoOffsetReset)
     val rebalanceListener: akka.actor.typed.ActorRef[ConsumerRebalanceEvent] =
       KafkaClusterSharding(system).rebalanceListener(shardEntity.typeKey)
 
@@ -333,7 +333,7 @@ protected final class AkkaStreamletContextImpl(
         producerRecord(outlet, topic, value)
       }
       .via(handleTermination)
-      .to(Producer.plainSink(makeProducerSettings(topic, runtimeBootstrapServers(topic))))
+      .to(Producer.plainSink(createProducerSettings(topic, runtimeBootstrapServers(topic))))
       .mapMaterializedValue(_ => NotUsed)
   }
 
