@@ -32,6 +32,7 @@ import akka.kafka.cluster.sharding.KafkaClusterSharding
 import akka.kafka.scaladsl._
 import akka.stream.scaladsl._
 import cloudflow.akkastream.internal.{ HealthCheckFiles, StreamletExecutionImpl }
+import cloudflow.akkastream.scaladsl._
 import com.typesafe.config._
 import cloudflow.streamlets._
 import org.slf4j.LoggerFactory
@@ -119,7 +120,7 @@ protected final class AkkaStreamletContextImpl(
   }
 
   // internal implementation that uses the CommittableOffset implementation to provide access to the underlying offsets
-  private[akkastream] def sourceWithContext[T](inlet: CodecInlet[T]): SourceWithContext[T, CommittableOffset, _] = {
+  private[akkastream] def sourceWithContext[T](inlet: CodecInlet[T]): SourceWithCommittableContext[T] = {
     val (topic, consumerSettings) = createConsumerSettings(inlet, "earliest")
 
     system.log.info(s"Creating committable source for group: ${groupId(inlet, topic)} topic: ${topic.name}")
@@ -135,14 +136,14 @@ protected final class AkkaStreamletContextImpl(
       .via(handleTermination)
   }
 
-  override def sourceWithCommittableContext[T](
-      inlet: CodecInlet[T]): cloudflow.akkastream.scaladsl.SourceWithCommittableContext[T] =
+  override def sourceWithCommittableContext[T](inlet: CodecInlet[T]): SourceWithCommittableContext[T] =
     sourceWithContext[T](inlet)
 
   private[akkastream] def shardedSourceWithContext[T, M, E](
       inlet: CodecInlet[T],
       shardEntity: Entity[M, E],
-      kafkaTimeout: FiniteDuration = 10.seconds): SourceWithContext[T, CommittableOffset, Future[NotUsed]] = {
+      kafkaTimeout: FiniteDuration = 10.seconds)
+      : SourceWithContext[T, CommittableOffset, Future[NotUsed]] /*SourceWithCommittableOffsetContext[T] */ = {
 
     val (topic, consumerSettings) = createConsumerSettings(inlet, "earliest")
 
@@ -190,13 +191,13 @@ protected final class AkkaStreamletContextImpl(
   override def shardedSourceWithCommittableContext[T, M, E](
       inlet: CodecInlet[T],
       shardEntity: Entity[M, E],
-      kafkaTimeout: FiniteDuration = 10.seconds): SourceWithContext[T, CommittableOffset, Future[NotUsed]] =
+      kafkaTimeout: FiniteDuration = 10.seconds): SourceWithContext[T, CommittableOffset, Future[NotUsed]]
+  /*SourceWithCommittableOffsetContext[T]*/ =
     shardedSourceWithContext(inlet, shardEntity)
 
   @deprecated("Use sourceWithCommittableContext", "1.3.4")
-  override def sourceWithOffsetContext[T](
-      inlet: CodecInlet[T]): cloudflow.akkastream.scaladsl.SourceWithOffsetContext[T] =
-    sourceWithContext[T](inlet)
+  override def sourceWithOffsetContext[T](inlet: CodecInlet[T]): SourceWithOffsetContext[T] =
+    sourceWithContext[T](inlet).asInstanceOf[SourceWithCommittableOffsetContext[T]]
 
   def committableSink[T](
       outlet: CodecOutlet[T],
@@ -311,7 +312,7 @@ protected final class AkkaStreamletContextImpl(
       inlet: CodecInlet[T],
       shardEntity: Entity[M, E]
       //kafkaTimeout: FiniteDuration = 10.seconds
-  ): Source[(TopicPartition, Source[CommittableMessage[Array[Byte], T], NotUsed]), Control] = {
+  ): Source[(TopicPartition, SourceWithCommittableContext[T]), Control] = {
 
     val (topic, consumerSettings) = createConsumerSettings(inlet, "earliest")
 
@@ -335,21 +336,29 @@ protected final class AkkaStreamletContextImpl(
         KafkaControls.add(c)
         NotUsed
       }
-      .mapAsyncUnordered(maxKafkaPartitions) {
+      .mapAsyncUnordered(parallelism = maxKafkaPartitions) {
         case (topicPartition: TopicPartition, topicPartitionSrc) =>
           Future {
-            val s = topicPartitionSrc
-              .via(handleTermination)
+            val s: Source[CommittableMessage[Array[Byte], T], NotUsed] = topicPartitionSrc
+            //.map(m ⇒ (m.record, m.committableOffset))
+            //.map(m ⇒ decode(inlet, m._1))
               .via(decoderFlow(inlet))
+              .via(handleTermination)
             //.map(_.record)
             //.map(decode(inlet, _))
             //.collect { case Some(v) => v }
-            //.asSourceWithContext { case (_, committableOffset) => committableOffset }
-            //.map { case (record, _) => record })
+            //.via(Committer.batchFlow(committerDefaults.withMaxBatch(1)))
 
-            (topicPartition, Source.fromGraph(s))
+            (
+              topicPartition,
+              Source
+                .fromGraph(s)
+                .map(m => (m.record, m.committableOffset))
+                .asSourceWithContext { case (_, committableOffset) => committableOffset }
+                .map { case (record, _) => record })
           }(system.dispatcher)
       }
+    //.toMat(Committer.sink(CommitterSettings(system))(DrainingControl.apply)
     // #todo : need source with context
     // #todo : need sink with Committer.batchFlow http://github.com/SemanticBeeng/reactive-kafka/blob/e4809fc9a0297cf0c0f250251d96fd9fb297967f/tests/src/test/scala/akka/kafka/scaladsl/CommittingSpec.scala#L491-L496
     // Given that the source above needs to limit a max number of records, it effectively does batching; so wondering if the  CommittableOffsetBatch

@@ -29,6 +29,7 @@ import akka.kafka.CommitterSettings
 import akka.stream.KillSwitches
 import akka.stream.scaladsl._
 import cloudflow.streamlets._
+import cloudflow.akkastream.scaladsl._
 
 import scala.concurrent.duration.{ DurationInt, FiniteDuration }
 
@@ -41,17 +42,16 @@ import scala.concurrent.duration.{ DurationInt, FiniteDuration }
  */
 trait AkkaStreamletContext extends StreamletContext {
 
-  private[akkastream] def sourceWithCommittableContext[T](
-      inlet: CodecInlet[T]): cloudflow.akkastream.scaladsl.SourceWithCommittableContext[T]
+  private[akkastream] def sourceWithCommittableContext[T](inlet: CodecInlet[T]): SourceWithCommittableContext[T]
 
   private[akkastream] def shardedSourceWithCommittableContext[T, M, E](
       inlet: CodecInlet[T],
       shardEntity: Entity[M, E],
-      kafkaTimeout: FiniteDuration = 10.seconds): SourceWithContext[T, CommittableOffset, Future[NotUsed]]
+      kafkaTimeout: FiniteDuration = 10.seconds)
+      : SourceWithContext[T, CommittableOffset, Future[NotUsed]] //SourceWithCommittableContext[T]
 
   @deprecated("Use `sourceWithCommittableContext` instead.", "1.3.4")
-  private[akkastream] def sourceWithOffsetContext[T](
-      inlet: CodecInlet[T]): cloudflow.akkastream.scaladsl.SourceWithOffsetContext[T]
+  private[akkastream] def sourceWithOffsetContext[T](inlet: CodecInlet[T]): SourceWithOffsetContext[T]
 
   private[akkastream] def plainSource[T](inlet: CodecInlet[T], resetPosition: ResetPosition): Source[T, NotUsed]
   private[akkastream] def plainSink[T](outlet: CodecOutlet[T]): Sink[T, NotUsed]

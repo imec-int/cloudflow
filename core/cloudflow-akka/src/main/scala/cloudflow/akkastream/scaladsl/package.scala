@@ -26,6 +26,8 @@ package object scaladsl {
 
   type SourceWithCommittableContext[+T] = SourceWithContext[T, Committable, _]
 
+  type SourceWithCommittableOffsetContext[+T] = SourceWithContext[T, CommittableOffset, NotUsed]
+
   object FlowWithCommittableContext {
 
     /**
