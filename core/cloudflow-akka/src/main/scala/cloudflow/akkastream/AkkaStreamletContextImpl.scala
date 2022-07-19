@@ -338,19 +338,16 @@ protected final class AkkaStreamletContextImpl(
       .mapAsyncUnordered(maxKafkaPartitions) {
         case (topicPartition: TopicPartition, topicPartitionSrc) =>
           Future {
-            (
-              topicPartition,
-              Source
-                .fromGraph(
-                  topicPartitionSrc
-                    .via(handleTermination)
-                    .via(decoderFlow(inlet)))
-              //.map(_.record)
-              //.map(decode(inlet, _))
-              //.collect { case Some(v) => v }
-              //.asSourceWithContext { case (_, committableOffset) => committableOffset }
-              //.map { case (record, _) => record })
-            )
+            val s = topicPartitionSrc
+              .via(handleTermination)
+              .via(decoderFlow(inlet))
+            //.map(_.record)
+            //.map(decode(inlet, _))
+            //.collect { case Some(v) => v }
+            //.asSourceWithContext { case (_, committableOffset) => committableOffset }
+            //.map { case (record, _) => record })
+
+            (topicPartition, Source.fromGraph(s))
           }(system.dispatcher)
       }
     // #todo : need source with context
