@@ -40,7 +40,6 @@ import org.slf4j.LoggerFactory
 import scala.concurrent.duration.{ DurationInt, FiniteDuration }
 import KafkaHelper._
 import akka.kafka.scaladsl.Consumer.Control
-import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.TopicPartition
 
 /**
@@ -310,9 +309,10 @@ protected final class AkkaStreamletContextImpl(
 
   def committablePartitionedShardedSource[T, M, E](
       inlet: CodecInlet[T],
-      shardEntity: Entity[M, E]
+      shardEntity: Entity[M, E],
       //kafkaTimeout: FiniteDuration = 10.seconds
-  ): Source[(TopicPartition, SourceWithCommittableContext[T]), /*Control*/ NotUsed] = {
+      maxKParallelism: Int = 20
+  ): Source[(TopicPartition, SourceWithCommittableContext[T]), Control] = {
 
     val (topic, consumerSettings) = createConsumerSettings(inlet, "earliest")
 
@@ -328,15 +328,13 @@ protected final class AkkaStreamletContextImpl(
     system.log.info(
       s"Creating sharded committable partitioned sharded source for group: ${groupId(inlet, topic)} topic: ${topic.name}")
 
-    val maxKafkaPartitions = 20
-
-    val source = Consumer
+    Consumer
       .committablePartitionedSource(consumerSettings, subscription)
-      .mapMaterializedValue { c =>
+      .mapMaterializedValue { c: Control =>
         KafkaControls.add(c)
-        NotUsed
+        c //NotUsed
       }
-      .mapAsyncUnordered(parallelism = maxKafkaPartitions) {
+      .mapAsyncUnordered(parallelism = maxKParallelism) {
         case (topicPartition: TopicPartition, topicPartitionSrc) =>
           Future {
             val s: SourceWithCommittableContext[T] = topicPartitionSrc
@@ -345,18 +343,16 @@ protected final class AkkaStreamletContextImpl(
               .map { case (record, _) => record }
               .map(decode(inlet, _))
               .collect { case Some(v) => v }
-              //via(decoderFlow(inlet))
               .via(handleTermination)
-            //.via(Committer.batchFlow(committerDefaults.withMaxBatch(1)))
+            //.via(Committer.batchFlow(committerSettings.withMaxBatch(1)))
 
             (topicPartition, s)
           }(system.dispatcher)
       }
-    //.toMat(Committer.sink(CommitterSettings(system))(DrainingControl.apply)
+    //.viaMat(Committer.sink(committerSettings))(DrainingControl.apply)
     // #todo : need sink with Committer.batchFlow http://github.com/SemanticBeeng/reactive-kafka/blob/e4809fc9a0297cf0c0f250251d96fd9fb297967f/tests/src/test/scala/akka/kafka/scaladsl/CommittingSpec.scala#L491-L496
     // Given that the source above needs to limit a max number of records, it effectively does batching; so wondering if the  CommittableOffsetBatch
     // should be applied at source or at sink; Need to review our previous wrapBatchResult ...
-    source
   }
 
   def plainSink[T](outlet: CodecOutlet[T]): Sink[T, NotUsed] = {
