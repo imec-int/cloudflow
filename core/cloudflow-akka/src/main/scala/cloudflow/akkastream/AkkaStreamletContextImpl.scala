@@ -106,7 +106,7 @@ protected final class AkkaStreamletContextImpl(
      * After this no more commits from enqueued messages can be handled.
      * The actor will wait for acknowledgements of the already sent offset commits from the Kafka broker before shutting down.
      */
-    def shutdownConsumers()(implicit ec: ExecutionContext) = {
+    def shutdownConsumers()(implicit ec: ExecutionContext) : Future[Done] = {
       log.debug("Shutting down consumers of {}", streamletDefinitionMsg)
       Future
         .sequence(controls.get.map(_.shutdown().recover {
@@ -335,7 +335,7 @@ protected final class AkkaStreamletContextImpl(
         c //NotUsed
       }
       .mapAsyncUnordered(parallelism = maxKParallelism) {
-        case (topicPartition: TopicPartition, topicPartitionSrc) =>
+        case (topicPartition, topicPartitionSrc) =>
           Future {
             val s: SourceWithCommittableContext[T] = topicPartitionSrc
               .map(m => (m.record, m.committableOffset))
@@ -344,16 +344,13 @@ protected final class AkkaStreamletContextImpl(
               .map(decode(inlet, _))
               .collect { case Some(v) => v }
               .via(handleTermination)
-            //.via(Committer.batchFlow(committerSettings.withMaxBatch(1)))
 
             (topicPartition, s)
           }(system.dispatcher)
       }
-    //.viaMat(Committer.sink(committerSettings))(DrainingControl.apply)
-    // #todo : need sink with Committer.batchFlow http://github.com/SemanticBeeng/reactive-kafka/blob/e4809fc9a0297cf0c0f250251d96fd9fb297967f/tests/src/test/scala/akka/kafka/scaladsl/CommittingSpec.scala#L491-L496
-    // Given that the source above needs to limit a max number of records, it effectively does batching; so wondering if the  CommittableOffsetBatch
-    // should be applied at source or at sink; Need to review our previous wrapBatchResult ...
   }
+
+  // #todo : need sink with Committer.batchFlow http://github.com/SemanticBeeng/reactive-kafka/blob/e4809fc9a0297cf0c0f250251d96fd9fb297967f/tests/src/test/scala/akka/kafka/scaladsl/CommittingSpec.scala#L491-L496
 
   def plainSink[T](outlet: CodecOutlet[T]): Sink[T, NotUsed] = {
     val topic = findTopicForPort(outlet)
