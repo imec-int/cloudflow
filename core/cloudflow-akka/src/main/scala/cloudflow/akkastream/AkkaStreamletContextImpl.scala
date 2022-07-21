@@ -28,6 +28,7 @@ import akka.cluster.sharding.external.ExternalShardAllocationStrategy
 import akka.cluster.sharding.typed.scaladsl.{ ClusterSharding, Entity }
 import akka.kafka._
 import akka.kafka.ConsumerMessage._
+import org.apache.kafka.common.TopicPartition
 import akka.kafka.cluster.sharding.KafkaClusterSharding
 import akka.kafka.scaladsl._
 import akka.stream.scaladsl._
@@ -39,8 +40,6 @@ import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration.{ DurationInt, FiniteDuration }
 import KafkaHelper._
-import akka.kafka.scaladsl.Consumer.Control
-import org.apache.kafka.common.TopicPartition
 
 /**
  * Implementation of the StreamletContext trait.
@@ -106,7 +105,7 @@ protected final class AkkaStreamletContextImpl(
      * After this no more commits from enqueued messages can be handled.
      * The actor will wait for acknowledgements of the already sent offset commits from the Kafka broker before shutting down.
      */
-    def shutdownConsumers()(implicit ec: ExecutionContext) : Future[Done] = {
+    def shutdownConsumers()(implicit ec: ExecutionContext): Future[Done] = {
       log.debug("Shutting down consumers of {}", streamletDefinitionMsg)
       Future
         .sequence(controls.get.map(_.shutdown().recover {
@@ -311,8 +310,7 @@ protected final class AkkaStreamletContextImpl(
       inlet: CodecInlet[T],
       shardEntity: Entity[M, E],
       //kafkaTimeout: FiniteDuration = 10.seconds
-      maxKParallelism: Int = 20
-  ): Source[(TopicPartition, SourceWithCommittableContext[T]), Control] = {
+      maxKParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] = {
 
     val (topic, consumerSettings) = createConsumerSettings(inlet, "earliest")
 
@@ -330,14 +328,14 @@ protected final class AkkaStreamletContextImpl(
 
     Consumer
       .committablePartitionedSource(consumerSettings, subscription)
-      .mapMaterializedValue { c: Control =>
+      .mapMaterializedValue { c: Consumer.Control =>
         KafkaControls.add(c)
         c //NotUsed
       }
       .mapAsyncUnordered(parallelism = maxKParallelism) {
         case (topicPartition, topicPartitionSrc) =>
           Future {
-            val s: SourceWithCommittableContext[T] = topicPartitionSrc
+            val s: SourceWithCommittableOffsetContext[T] = topicPartitionSrc
               .map(m => (m.record, m.committableOffset))
               .asSourceWithContext { case (_, committableOffset) => committableOffset }
               .map { case (record, _) => record }

@@ -26,8 +26,10 @@ import akka.annotation.InternalApi
 import akka.cluster.sharding.typed.scaladsl.Entity
 import akka.kafka.ConsumerMessage.{ Committable, CommittableOffset }
 import akka.kafka.CommitterSettings
+import org.apache.kafka.common.TopicPartition
 import akka.stream.KillSwitches
 import akka.stream.scaladsl._
+import akka.kafka.scaladsl._
 import cloudflow.streamlets._
 import cloudflow.akkastream.scaladsl._
 
@@ -60,7 +62,11 @@ trait AkkaStreamletContext extends StreamletContext {
       shardEntity: Entity[M, E],
       resetPosition: ResetPosition = Latest,
       kafkaTimeout: FiniteDuration = 10.seconds): Source[T, Future[NotUsed]]
-
+  private[akkastream] def committablePartitionedShardedSource[T, M, E](
+      inlet: CodecInlet[T],
+      shardEntity: Entity[M, E],
+      //kafkaTimeout: FiniteDuration = 10.seconds
+      maxKParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control]
   private[akkastream] def committableSink[T](
       outlet: CodecOutlet[T],
       committerSettings: CommitterSettings): Sink[(T, Committable), NotUsed]

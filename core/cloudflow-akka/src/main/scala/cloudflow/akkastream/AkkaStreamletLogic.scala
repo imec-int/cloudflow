@@ -17,7 +17,6 @@
 package cloudflow.akkastream
 
 import java.nio.file.Path
-
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.actor.typed.scaladsl.adapter._
@@ -26,9 +25,11 @@ import akka.cluster.sharding.typed.scaladsl.{ ClusterSharding, Entity }
 import akka.stream.scaladsl._
 import akka.kafka._
 import akka.kafka.ConsumerMessage._
+import akka.kafka.scaladsl.Consumer
 import com.typesafe.config.Config
 import cloudflow.streamlets._
 import cloudflow.akkastream.scaladsl._
+import org.apache.kafka.common.TopicPartition
 
 import scala.concurrent.Future
 import scala.concurrent.duration.{ DurationInt, FiniteDuration }
@@ -174,6 +175,19 @@ abstract class AkkaStreamletLogic(implicit val context: AkkaStreamletContext)
       kafkaTimeout: FiniteDuration = 10.seconds)
       : akka.stream.javadsl.SourceWithContext[T, Committable, Future[NotUsed]] =
     context.shardedSourceWithCommittableContext(inlet, shardEntity, kafkaTimeout).asJava
+
+  /**
+   * Java API
+   * @see [[shardedSourceWithCommittableContext]]
+   */
+  @ApiMayChange
+  def getShardedPartitionedSourceWithCommittableContext[T, M, E](
+      inlet: CodecInlet[T],
+      shardEntity: Entity[M, E],
+      kafkaTimeout: FiniteDuration = 10.seconds)
+  //: akka.stream.javadsl.SourceWithContext[T, Committable, Future[NotUsed]] =
+      : akka.stream.javadsl.Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] =
+    context.committablePartitionedShardedSource(inlet, shardEntity /*, kafkaTimeout*/ ).asJava
 
   /**
    * The `plainSource` emits `T` records (as received through the `inlet`).

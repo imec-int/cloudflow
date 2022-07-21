@@ -23,12 +23,15 @@ import akka.actor._
 import akka.actor.typed.scaladsl.adapter._
 import akka.cluster.sharding.typed.scaladsl.{ ClusterSharding, Entity }
 import akka.kafka.CommitterSettings
+import org.apache.kafka.common.TopicPartition
 import akka.kafka.ConsumerMessage._
 import akka.stream._
 import akka.stream.scaladsl._
+import akka.kafka.scaladsl._
 import com.typesafe.config._
 import cloudflow.akkastream._
 import cloudflow.akkastream.internal.StreamletExecutionImpl
+import cloudflow.akkastream.scaladsl.SourceWithCommittableOffsetContext
 import cloudflow.streamlets._
 
 import scala.concurrent.duration.{ DurationInt, FiniteDuration }
@@ -166,6 +169,15 @@ private[testkit] case class TestContext(
     Source.futureSource(Future {
       plainSource(inlet, resetPosition)
     }(system.dispatcher))
+  }
+
+  def committablePartitionedShardedSource[T, M, E](
+      inlet: CodecInlet[T],
+      shardEntity: Entity[M, E],
+      //kafkaTimeout: FiniteDuration = 10.seconds
+      maxKParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] = {
+    //#todo
+    null.asInstanceOf[Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control]]
   }
 
   def plainSink[T](outlet: CodecOutlet[T]): Sink[T, NotUsed] = sinkRef[T](outlet).sink.contramap { el =>
