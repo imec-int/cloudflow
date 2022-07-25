@@ -29,7 +29,7 @@ class ConnectedCarCluster extends AkkaStreamlet with Clustering {
 
     def runnableGraph = source.via(flow).to(committableSink(out))
 
-    implicit val timeout: Timeout = 3.seconds
+    implicit val timeout: Timeout = 5.seconds
     def flow =
       FlowWithCommittableContext[ConnectedCarERecord]
         .mapAsync(5) { msg ⇒
