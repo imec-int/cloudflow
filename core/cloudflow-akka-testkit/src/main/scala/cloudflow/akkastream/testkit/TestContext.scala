@@ -174,8 +174,8 @@ private[testkit] case class TestContext(
   def committablePartitionedShardedSource[T, M, E](
       inlet: CodecInlet[T],
       shardEntity: Entity[M, E],
-      //kafkaTimeout: FiniteDuration = 10.seconds
-      maxKParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] = {
+      kafkaTimeout: FiniteDuration = 10.seconds,
+      maxParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] = {
     //#todo
     null.asInstanceOf[Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control]]
   }
