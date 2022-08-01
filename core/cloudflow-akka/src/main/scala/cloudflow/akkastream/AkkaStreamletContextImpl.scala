@@ -332,9 +332,9 @@ protected final class AkkaStreamletContextImpl(
         KafkaControls.add(c)
         c //NotUsed
       }
-      .mapAsyncUnordered(parallelism = maxKParallelism) {
+      .map/*AsyncUnordered(parallelism = maxKParallelism)*/ {
         case (topicPartition, topicPartitionSrc) =>
-          Future.successful {
+          //Future.successful {
             val s: SourceWithCommittableOffsetContext[T] = topicPartitionSrc
               .map(m => (m.record, m.committableOffset))
               .asSourceWithContext { case (_, committableOffset) => committableOffset }
@@ -348,7 +348,7 @@ protected final class AkkaStreamletContextImpl(
               .via(handleTermination)
 
             (topicPartition, s)
-          }
+          //}
       }
   }
 
