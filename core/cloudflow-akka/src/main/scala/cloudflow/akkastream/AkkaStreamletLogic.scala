@@ -177,17 +177,16 @@ abstract class AkkaStreamletLogic(implicit val context: AkkaStreamletContext)
     context.shardedSourceWithCommittableContext(inlet, shardEntity, kafkaTimeout).asJava
 
   /**
-   * Java API
    * @see [[shardedSourceWithCommittableContext]]
    */
   @ApiMayChange
-  def getShardedPartitionedSourceWithCommittableContext[T, M, E](
+  def shardedPartitionedSourceWithCommittableContext[T, M, E](
       inlet: CodecInlet[T],
       shardEntity: Entity[M, E],
       kafkaTimeout: FiniteDuration = 10.seconds)
   //: akka.stream.javadsl.SourceWithContext[T, Committable, Future[NotUsed]] =
-      : akka.stream.javadsl.Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] =
-    context.committablePartitionedShardedSource(inlet, shardEntity /*, kafkaTimeout*/ ).asJava
+      : Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] =
+    context.committablePartitionedShardedSource(inlet, shardEntity /*, kafkaTimeout*/ )
 
   /**
    * The `plainSource` emits `T` records (as received through the `inlet`).
@@ -195,9 +194,7 @@ abstract class AkkaStreamletLogic(implicit val context: AkkaStreamletContext)
    * It has no support for committing offsets to Kafka.
    * The `inlet` specifies a [[cloudflow.streamlets.Codec]] that will be used to deserialize the records read from Kafka.
    */
-  def plainSource[T](
-      inlet: CodecInlet[T],
-      resetPosition: ResetPosition = Latest): akka.stream.scaladsl.Source[T, NotUsed] =
+  def plainSource[T](inlet: CodecInlet[T], resetPosition: ResetPosition = Latest): Source[T, NotUsed] =
     context.plainSource(inlet, resetPosition)
 
   /**
