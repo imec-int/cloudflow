@@ -309,7 +309,7 @@ protected final class AkkaStreamletContextImpl(
   def committablePartitionedShardedSource[T, M, E](
       inlet: CodecInlet[T],
       shardEntity: Entity[M, E],
-      //kafkaTimeout: FiniteDuration = 10.seconds
+      kafkaTimeout: FiniteDuration = 10.seconds,
       maxParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] = {
 
     val (topic, consumerSettings) = createConsumerSettings(inlet, "earliest")

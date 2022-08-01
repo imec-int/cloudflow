@@ -183,10 +183,10 @@ abstract class AkkaStreamletLogic(implicit val context: AkkaStreamletContext)
   def shardedPartitionedSourceWithCommittableContext[T, M, E](
       inlet: CodecInlet[T],
       shardEntity: Entity[M, E],
-      kafkaTimeout: FiniteDuration = 10.seconds)
-  //: akka.stream.javadsl.SourceWithContext[T, Committable, Future[NotUsed]] =
+      kafkaTimeout: FiniteDuration = 10.seconds,
+      maxParallelism: Int = 20)
       : Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] =
-    context.committablePartitionedShardedSource(inlet, shardEntity /*, kafkaTimeout*/ )
+    context.committablePartitionedShardedSource(inlet, shardEntity, kafkaTimeout, maxParallelism)
 
   /**
    * The `plainSource` emits `T` records (as received through the `inlet`).
