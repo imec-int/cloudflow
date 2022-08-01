@@ -334,17 +334,21 @@ protected final class AkkaStreamletContextImpl(
       }
       .mapAsyncUnordered(parallelism = maxKParallelism) {
         case (topicPartition, topicPartitionSrc) =>
-          Future {
+          Future.successful {
             val s: SourceWithCommittableOffsetContext[T] = topicPartitionSrc
               .map(m => (m.record, m.committableOffset))
               .asSourceWithContext { case (_, committableOffset) => committableOffset }
-              .map { case (record, _) => record }
+              .map {
+                case (record, _) =>
+                  log.debug(s"Decoding record {}.", record)
+                  record
+              }
               .map(decode(inlet, _))
               .collect { case Some(v) => v }
               .via(handleTermination)
 
             (topicPartition, s)
-          }(system.dispatcher)
+          }
       }
   }
 
