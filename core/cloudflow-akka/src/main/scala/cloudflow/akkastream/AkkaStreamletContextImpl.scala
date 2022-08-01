@@ -310,7 +310,7 @@ protected final class AkkaStreamletContextImpl(
       inlet: CodecInlet[T],
       shardEntity: Entity[M, E],
       //kafkaTimeout: FiniteDuration = 10.seconds
-      maxKParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] = {
+      maxParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] = {
 
     val (topic, consumerSettings) = createConsumerSettings(inlet, "earliest")
 
@@ -332,24 +332,24 @@ protected final class AkkaStreamletContextImpl(
         KafkaControls.add(c)
         c //NotUsed
       }
-      .map/*AsyncUnordered(parallelism = maxKParallelism)*/ {
-        case (topicPartition, topicPartitionSrc) =>
-          //Future.successful {
-            val s: SourceWithCommittableOffsetContext[T] = topicPartitionSrc
-              .map(m => (m.record, m.committableOffset))
-              .asSourceWithContext { case (_, committableOffset) => committableOffset }
-              .map {
-                case (record, _) =>
-                  log.debug(s"Decoding record {}.", record)
-                  record
-              }
-              .map(decode(inlet, _))
-              .collect { case Some(v) => v }
-              .via(handleTermination)
+      .map /*AsyncUnordered(parallelism = maxKParallelism)*/ {
+      case (topicPartition, topicPartitionSrc) =>
+        //Future.successful {
+        val s: SourceWithCommittableOffsetContext[T] = topicPartitionSrc
+          .map(m => (m.record, m.committableOffset))
+          .asSourceWithContext { case (_, committableOffset) => committableOffset }
+          .map {
+            case (record, _) =>
+              log.debug(s"Decoding record {}.", record)
+              record
+          }
+          .map(decode(inlet, _))
+          .collect { case Some(v) => v }
+          .via(handleTermination)
 
-            (topicPartition, s)
-          //}
-      }
+        (topicPartition, s)
+      //}
+    }
   }
 
   // #todo : need sink with Committer.batchFlow http://github.com/SemanticBeeng/reactive-kafka/blob/e4809fc9a0297cf0c0f250251d96fd9fb297967f/tests/src/test/scala/akka/kafka/scaladsl/CommittingSpec.scala#L491-L496

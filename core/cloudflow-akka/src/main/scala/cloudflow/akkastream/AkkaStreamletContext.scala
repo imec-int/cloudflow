@@ -66,7 +66,7 @@ trait AkkaStreamletContext extends StreamletContext {
       inlet: CodecInlet[T],
       shardEntity: Entity[M, E],
       //kafkaTimeout: FiniteDuration = 10.seconds
-      maxKParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control]
+      maxParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control]
   private[akkastream] def committableSink[T](
       outlet: CodecOutlet[T],
       committerSettings: CommitterSettings): Sink[(T, Committable), NotUsed]
