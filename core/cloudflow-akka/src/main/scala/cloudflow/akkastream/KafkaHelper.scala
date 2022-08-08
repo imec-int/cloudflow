@@ -3,7 +3,6 @@ package cloudflow.akkastream
 import akka.actor.ActorSystem
 import akka.annotation.InternalApi
 import akka.kafka.{ ConsumerSettings, ProducerSettings }
-import cloudflow.blueprint.RunnerConfigUtils
 import org.apache.kafka.clients.consumer.{ ConsumerConfig, ConsumerRecord, CooperativeStickyAssignor }
 import org.apache.kafka.clients.producer.ProducerRecord
 
@@ -26,6 +25,13 @@ object KafkaHelper {
       def runtimeBootstrapServers(topic: Topic): String
     } =>
 
+    def groupInstanceId[T](inlet: CodecInlet[T], topic: Topic): String = {
+      import cloudflow.blueprint.RunnerConfigUtils
+      val pod_id = RunnerConfigUtils.getPodMetadata("/mnt/downward-api-volume")._3
+
+      s"${groupId(inlet, topic)}_${pod_id}"
+    }
+
     protected def createConsumerSettings[T](
         inlet: CodecInlet[T],
         offsetReset: String,
@@ -39,11 +45,10 @@ object KafkaHelper {
         .withProperties(topic.kafkaConsumerProperties)
 
       (topic, if (stickPartitionAssignment) {
-        val pod_id = RunnerConfigUtils.getPodMetadata("/mnt/downward-api-volume")._3
         cs.withProperty(
             ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG,
             classOf[CooperativeStickyAssignor].getName())
-          .withGroupInstanceId(s"${groupId(inlet, topic)}_${pod_id}")
+          .withGroupInstanceId(groupInstanceId(inlet, topic))
       } else cs)
     }
 

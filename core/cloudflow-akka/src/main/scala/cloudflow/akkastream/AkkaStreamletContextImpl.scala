@@ -324,7 +324,7 @@ protected final class AkkaStreamletContextImpl(
       .withRebalanceListener(rebalanceListener.toClassic)
 
     system.log.info(
-      s"Creating sharded committable partitioned sharded source for group: ${groupId(inlet, topic)} topic: ${topic.name}")
+      s"Creating sharded committable partitioned sharded source for group instance: ${groupInstanceId(inlet, topic)} topic: ${topic.name}")
 
     Consumer
       .committablePartitionedSource(consumerSettings, subscription)
