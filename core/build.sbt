@@ -314,7 +314,7 @@ lazy val cloudflowStreamlets =
 lazy val cloudflowAkka =
   Project(id = "cloudflow-akka", base = file("cloudflow-akka"))
     .enablePlugins(GenJavadocPlugin, JavaFormatterPlugin, ScalafmtPlugin)
-    .dependsOn(cloudflowStreamlets)
+    .dependsOn(cloudflowStreamlets, cloudflowBlueprint)
     .settings(Dependencies.cloudflowAkka)
     .settings(
       scalaVersion := Dependencies.Scala212,

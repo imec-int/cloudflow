@@ -3,6 +3,7 @@ package cloudflow.akkastream
 import akka.actor.ActorSystem
 import akka.annotation.InternalApi
 import akka.kafka.{ ConsumerSettings, ProducerSettings }
+import cloudflow.blueprint.RunnerConfigUtils
 import org.apache.kafka.clients.consumer.{ ConsumerConfig, ConsumerRecord, CooperativeStickyAssignor }
 import org.apache.kafka.clients.producer.ProducerRecord
 
@@ -39,11 +40,14 @@ object KafkaHelper {
 
       (
         topic,
-        if (stickPartitionAssignment)
+        if (stickPartitionAssignment) {
+          val pod_id = RunnerConfigUtils.getPodMetadata("/mnt/downward-api-volume")._3
           cs.withProperty(
-            ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG,
-            classOf[CooperativeStickyAssignor].getName())
-        else cs)
+              ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG,
+              classOf[CooperativeStickyAssignor].getName())
+            .withGroupInstanceId(s"${groupId(inlet, topic)}_${pod_id}")
+         }
+          else cs)
     }
 
     protected def decode[T](inlet: CodecInlet[T], record: ConsumerRecord[Array[Byte], Array[Byte]]): Option[T] =
