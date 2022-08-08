@@ -3,7 +3,7 @@ package cloudflow.akkastream
 import akka.actor.ActorSystem
 import akka.annotation.InternalApi
 import akka.kafka.{ ConsumerSettings, ProducerSettings }
-import org.apache.kafka.clients.consumer.{ ConsumerConfig, ConsumerRecord }
+import org.apache.kafka.clients.consumer.{ ConsumerConfig, ConsumerRecord, CooperativeStickyAssignor }
 import org.apache.kafka.clients.producer.ProducerRecord
 
 import java.nio.charset.StandardCharsets
@@ -25,16 +25,25 @@ object KafkaHelper {
       def runtimeBootstrapServers(topic: Topic): String
     } =>
 
-    protected def createConsumerSettings[T](inlet: CodecInlet[T], offsetReset: String)(
+    protected def createConsumerSettings[T](
+        inlet: CodecInlet[T],
+        offsetReset: String,
+        stickPartitionAssignment: Boolean = false)(
         implicit system: ActorSystem): (Topic, ConsumerSettings[Array[Byte], Array[Byte]]) = {
       val topic = findTopicForPort(inlet)
+      val cs = ConsumerSettings(system, new ByteArrayDeserializer, new ByteArrayDeserializer)
+        .withBootstrapServers(runtimeBootstrapServers(topic))
+        .withGroupId(groupId(inlet, topic))
+        .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, offsetReset)
+        .withProperties(topic.kafkaConsumerProperties)
+
       (
         topic,
-        ConsumerSettings(system, new ByteArrayDeserializer, new ByteArrayDeserializer)
-          .withBootstrapServers(runtimeBootstrapServers(topic))
-          .withGroupId(groupId(inlet, topic))
-          .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, offsetReset)
-          .withProperties(topic.kafkaConsumerProperties))
+        if (stickPartitionAssignment)
+          cs.withProperty(
+            ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG,
+            classOf[CooperativeStickyAssignor].getName())
+        else cs)
     }
 
     protected def decode[T](inlet: CodecInlet[T], record: ConsumerRecord[Array[Byte], Array[Byte]]): Option[T] =

@@ -312,7 +312,7 @@ protected final class AkkaStreamletContextImpl(
       kafkaTimeout: FiniteDuration = 10.seconds,
       maxParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] = {
 
-    val (topic, consumerSettings) = createConsumerSettings(inlet, "earliest")
+    val (topic, consumerSettings) = createConsumerSettings(inlet, "earliest", true)
 
     val rebalanceListener: akka.actor.typed.ActorRef[ConsumerRebalanceEvent] =
       KafkaClusterSharding(system).rebalanceListener(shardEntity.typeKey)
