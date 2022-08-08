@@ -38,16 +38,13 @@ object KafkaHelper {
         .withProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, offsetReset)
         .withProperties(topic.kafkaConsumerProperties)
 
-      (
-        topic,
-        if (stickPartitionAssignment) {
-          val pod_id = RunnerConfigUtils.getPodMetadata("/mnt/downward-api-volume")._3
-          cs.withProperty(
-              ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG,
-              classOf[CooperativeStickyAssignor].getName())
-            .withGroupInstanceId(s"${groupId(inlet, topic)}_${pod_id}")
-         }
-          else cs)
+      (topic, if (stickPartitionAssignment) {
+        val pod_id = RunnerConfigUtils.getPodMetadata("/mnt/downward-api-volume")._3
+        cs.withProperty(
+            ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG,
+            classOf[CooperativeStickyAssignor].getName())
+          .withGroupInstanceId(s"${groupId(inlet, topic)}_${pod_id}")
+      } else cs)
     }
 
     protected def decode[T](inlet: CodecInlet[T], record: ConsumerRecord[Array[Byte], Array[Byte]]): Option[T] =
