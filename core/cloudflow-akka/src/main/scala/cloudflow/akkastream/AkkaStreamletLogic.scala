@@ -31,6 +31,7 @@ import cloudflow.streamlets._
 import cloudflow.akkastream.scaladsl._
 import org.apache.kafka.common.TopicPartition
 
+import scala.collection._
 import scala.concurrent.Future
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
@@ -128,7 +129,7 @@ abstract class AkkaStreamletLogic(implicit val context: AkkaStreamletContext)
 
   def flexiFlow[T](
       outlet: CodecOutlet[T]): Flow[(immutable.Seq[_ <: T], _ <: Committable), (Unit, Committable), NotUsed] =
-    context.flexiFlow(outlet)/*.asFlowWithContext[immutable.Seq[_ <: T], Committable, Committable]{
+    context.flexiFlow(outlet)
 
   /**
    * Java API
