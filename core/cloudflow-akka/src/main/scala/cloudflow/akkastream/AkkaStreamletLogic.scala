@@ -21,7 +21,7 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.actor.typed.scaladsl.adapter._
 import akka.annotation.ApiMayChange
-import akka.cluster.sharding.typed.scaladsl.{ ClusterSharding, Entity }
+import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity}
 import akka.stream.scaladsl._
 import akka.kafka._
 import akka.kafka.ConsumerMessage._
@@ -32,7 +32,7 @@ import cloudflow.akkastream.scaladsl._
 import org.apache.kafka.common.TopicPartition
 
 import scala.concurrent.Future
-import scala.concurrent.duration.{ DurationInt, FiniteDuration }
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 /**
  * Provides an entry-point for defining the behavior of an AkkaStreamlet.
@@ -125,6 +125,10 @@ abstract class AkkaStreamletLogic(implicit val context: AkkaStreamletContext)
    */
   def sourceWithCommittableContext[T](inlet: CodecInlet[T]): SourceWithCommittableContext[T] =
     context.sourceWithCommittableContext(inlet)
+
+  def flexiFlow[T](
+      outlet: CodecOutlet[T]): Flow[(immutable.Seq[_ <: T], _ <: Committable), (Unit, Committable), NotUsed] =
+    context.flexiFlow(outlet)/*.asFlowWithContext[immutable.Seq[_ <: T], Committable, Committable]{
 
   /**
    * Java API

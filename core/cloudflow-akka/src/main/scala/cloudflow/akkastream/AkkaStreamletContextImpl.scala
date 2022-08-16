@@ -339,16 +339,14 @@ protected final class AkkaStreamletContextImpl(
               .map(m => (m.record, m.committableOffset))
               .asSourceWithContext { case (_, committableOffset) => committableOffset }
               .map { case (record, _) => record }
+              .via(handleTermination)
               .map(decode(inlet, _))
               .collect { case Some(v) => v }
-              .via(handleTermination)
 
             (topicPartition, s)
           }
       }
   }
-
-  // #todo : need sink with Committer.batchFlow http://github.com/SemanticBeeng/reactive-kafka/blob/e4809fc9a0297cf0c0f250251d96fd9fb297967f/tests/src/test/scala/akka/kafka/scaladsl/CommittingSpec.scala#L491-L496
 
   def plainSink[T](outlet: CodecOutlet[T]): Sink[T, NotUsed] = {
     val topic = findTopicForPort(outlet)
