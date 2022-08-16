@@ -21,7 +21,7 @@ import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.actor.typed.scaladsl.adapter._
 import akka.annotation.ApiMayChange
-import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity}
+import akka.cluster.sharding.typed.scaladsl.{ ClusterSharding, Entity }
 import akka.stream.scaladsl._
 import akka.kafka._
 import akka.kafka.ConsumerMessage._
@@ -33,7 +33,7 @@ import org.apache.kafka.common.TopicPartition
 
 import scala.collection._
 import scala.concurrent.Future
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration.{ DurationInt, FiniteDuration }
 
 /**
  * Provides an entry-point for defining the behavior of an AkkaStreamlet.
