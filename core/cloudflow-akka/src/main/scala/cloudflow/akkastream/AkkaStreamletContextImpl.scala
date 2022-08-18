@@ -308,20 +308,27 @@ protected final class AkkaStreamletContextImpl(
 
   def committablePartitionedShardedSource[T, M, E](
       inlet: CodecInlet[T],
-      shardEntity: Entity[M, E],
+      shardEntity: Option[Entity[M, E]] = None,
       kafkaTimeout: FiniteDuration = 10.seconds,
       maxParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] = {
 
     val (topic, consumerSettings) = createConsumerSettings(inlet, "earliest", true)
 
-    val rebalanceListener: akka.actor.typed.ActorRef[ConsumerRebalanceEvent] =
-      KafkaClusterSharding(system).rebalanceListener(shardEntity.typeKey)
-
     import akka.actor.typed.scaladsl.adapter._
 
-    val subscription = Subscriptions
-      .topics(topic.name)
-      .withRebalanceListener(rebalanceListener.toClassic)
+    def subscription = {
+      val subscription = Subscriptions
+        .topics(topic.name)
+
+      if (shardEntity.isDefined) {
+        val rebalanceListener: akka.actor.typed.ActorRef[ConsumerRebalanceEvent] =
+          KafkaClusterSharding(system).rebalanceListener(shardEntity.get.typeKey)
+
+        subscription.withRebalanceListener(rebalanceListener.toClassic)
+      } else {
+        subscription
+      }
+    }
 
     system.log.info(
       s"Creating sharded committable partitioned sharded source for group instance: ${groupInstanceId(inlet, topic)} topic: ${topic.name}")

@@ -187,7 +187,7 @@ abstract class AkkaStreamletLogic(implicit val context: AkkaStreamletContext)
   @ApiMayChange
   def shardedPartitionedSourceWithCommittableContext[T, M, E](
       inlet: CodecInlet[T],
-      shardEntity: Entity[M, E],
+      shardEntity: Option[Entity[M, E]] = None,
       kafkaTimeout: FiniteDuration = 10.seconds,
       maxParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] =
     context.committablePartitionedShardedSource(inlet, shardEntity, kafkaTimeout, maxParallelism)
