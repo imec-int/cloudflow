@@ -326,12 +326,14 @@ protected final class AkkaStreamletContextImpl(
             .map { e =>
               val rebalanceListener: akka.actor.typed.ActorRef[ConsumerRebalanceEvent] =
                 KafkaClusterSharding(system).rebalanceListener(e.typeKey)
+              log.info(s"Subscription for ${topic.name} has rebalance listener for ${e.typeKey}")
               s.withRebalanceListener(rebalanceListener.toClassic)
             }
             .getOrElse(s))
         .map(s =>
           partitionAssignmentHandler
             .map { p =>
+              log.info(s"Subscription for ${topic.name} has partition assignment handler $p")
               s.withPartitionAssignmentHandler(p)
             }
             .getOrElse(s))
