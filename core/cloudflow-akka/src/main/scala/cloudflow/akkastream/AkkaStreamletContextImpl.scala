@@ -309,6 +309,7 @@ protected final class AkkaStreamletContextImpl(
   def committablePartitionedShardedSource[T, M, E](
       inlet: CodecInlet[T],
       shardEntity: Option[Entity[M, E]] = None,
+      partitionAssignmentHandler: Option[PartitionAssignmentHandler] = None,
       kafkaTimeout: FiniteDuration = 10.seconds,
       maxParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] = {
 
@@ -317,17 +318,24 @@ protected final class AkkaStreamletContextImpl(
     import akka.actor.typed.scaladsl.adapter._
 
     def subscription = {
-      val subscription = Subscriptions
-        .topics(topic.name)
-
-      if (shardEntity.isDefined) {
-        val rebalanceListener: akka.actor.typed.ActorRef[ConsumerRebalanceEvent] =
-          KafkaClusterSharding(system).rebalanceListener(shardEntity.get.typeKey)
-
-        subscription.withRebalanceListener(rebalanceListener.toClassic)
-      } else {
-        subscription
-      }
+      Some(
+        Subscriptions
+          .topics(topic.name))
+        .map(s =>
+          shardEntity
+            .map { e =>
+              val rebalanceListener: akka.actor.typed.ActorRef[ConsumerRebalanceEvent] =
+                KafkaClusterSharding(system).rebalanceListener(e.typeKey)
+              s.withRebalanceListener(rebalanceListener.toClassic)
+            }
+            .getOrElse(s))
+        .map(s =>
+          partitionAssignmentHandler
+            .map { p =>
+              s.withPartitionAssignmentHandler(p)
+            }
+            .getOrElse(s))
+        .get
     }
 
     system.log.info(

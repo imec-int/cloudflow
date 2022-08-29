@@ -65,6 +65,7 @@ trait AkkaStreamletContext extends StreamletContext {
   private[akkastream] def committablePartitionedShardedSource[T, M, E](
       inlet: CodecInlet[T],
       shardEntity: Option[Entity[M, E]] = None,
+      partitionAssignmentHandler: Option[PartitionAssignmentHandler] = None,
       kafkaTimeout: FiniteDuration = 10.seconds,
       maxParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control]
   private[akkastream] def committableSink[T](

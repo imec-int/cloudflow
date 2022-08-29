@@ -25,7 +25,7 @@ import akka.cluster.sharding.typed.scaladsl.{ ClusterSharding, Entity }
 import akka.stream.scaladsl._
 import akka.kafka._
 import akka.kafka.ConsumerMessage._
-import akka.kafka.scaladsl.Consumer
+import akka.kafka.scaladsl.{ Consumer, PartitionAssignmentHandler }
 import com.typesafe.config.Config
 import cloudflow.streamlets._
 import cloudflow.akkastream.scaladsl._
@@ -188,9 +188,15 @@ abstract class AkkaStreamletLogic(implicit val context: AkkaStreamletContext)
   def shardedPartitionedSourceWithCommittableContext[T, M, E](
       inlet: CodecInlet[T],
       shardEntity: Option[Entity[M, E]] = None,
+      partitionAssignmentHandler: Option[PartitionAssignmentHandler] = None,
       kafkaTimeout: FiniteDuration = 10.seconds,
       maxParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] =
-    context.committablePartitionedShardedSource(inlet, shardEntity, kafkaTimeout, maxParallelism)
+    context.committablePartitionedShardedSource(
+      inlet,
+      shardEntity,
+      partitionAssignmentHandler,
+      kafkaTimeout,
+      maxParallelism)
 
   /**
    * The `plainSource` emits `T` records (as received through the `inlet`).
