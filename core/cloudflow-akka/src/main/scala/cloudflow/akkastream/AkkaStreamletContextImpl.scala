@@ -22,23 +22,24 @@ import scala.collection.immutable
 import scala.concurrent._
 import scala.util._
 import akka._
-import akka.actor.{ ActorSystem, CoordinatedShutdown }
+import akka.actor.{ActorSystem, CoordinatedShutdown}
 import akka.annotation.InternalApi
 import akka.cluster.sharding.external.ExternalShardAllocationStrategy
-import akka.cluster.sharding.typed.scaladsl.{ ClusterSharding, Entity }
+import akka.cluster.sharding.typed.scaladsl._
 import akka.kafka._
 import akka.kafka.ConsumerMessage._
+import akka.kafka.internal.PartitionAssignmentHelpers
 import org.apache.kafka.common.TopicPartition
 import akka.kafka.cluster.sharding.KafkaClusterSharding
 import akka.kafka.scaladsl._
 import akka.stream.scaladsl._
-import cloudflow.akkastream.internal.{ HealthCheckFiles, StreamletExecutionImpl }
+import cloudflow.akkastream.internal.{HealthCheckFiles, StreamletExecutionImpl}
 import cloudflow.akkastream.scaladsl._
 import com.typesafe.config._
 import cloudflow.streamlets._
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.duration.{ DurationInt, FiniteDuration }
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import KafkaHelper._
 
 /**
@@ -334,7 +335,7 @@ protected final class AkkaStreamletContextImpl(
           partitionAssignmentHandler
             .map { p =>
               log.info(s"Subscription for ${topic.name} has partition assignment handler $p")
-              s.withPartitionAssignmentHandler(p)
+              s.withPartitionAssignmentHandler(PartitionAssignmentHelpers.chain(s.partitionAssignmentHandler, p))
             }
             .getOrElse(s))
         .get
