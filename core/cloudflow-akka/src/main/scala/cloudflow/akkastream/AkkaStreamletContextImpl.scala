@@ -341,6 +341,25 @@ protected final class AkkaStreamletContextImpl(
         .get
     }
 
+    shardEntity.map { entity =>
+      system.log.info(
+        s"Initializing cluster sharding ExternalShardAllocationStrategy for key: ${entity.typeKey.name} topic: ${topic.name}")
+
+      val messageExtractor: Future[KafkaClusterSharding.KafkaShardingMessageExtractor[M]] =
+        KafkaClusterSharding(system).messageExtractor(
+          topic = topic.name,
+          timeout = kafkaTimeout,
+          settings = consumerSettings)
+
+      messageExtractor.map { m =>
+        ClusterSharding(system.toTyped).init(
+          entity
+            .withAllocationStrategy(entity.allocationStrategy
+              .getOrElse(new ExternalShardAllocationStrategy(system, entity.typeKey.name)))
+            .withMessageExtractor(m))
+      }(system.dispatcher)
+    }
+
     system.log.info(
       s"Creating sharded committable partitioned sharded source for group instance: ${groupInstanceId(inlet, topic)} topic: ${topic.name}")
 
