@@ -22,7 +22,7 @@ import scala.collection.immutable
 import scala.concurrent._
 import scala.util._
 import akka._
-import akka.actor.{ActorSystem, CoordinatedShutdown}
+import akka.actor.{ ActorSystem, CoordinatedShutdown }
 import akka.annotation.InternalApi
 import akka.cluster.sharding.external.ExternalShardAllocationStrategy
 import akka.cluster.sharding.typed.scaladsl._
@@ -34,13 +34,13 @@ import org.apache.kafka.common.TopicPartition
 import akka.kafka.cluster.sharding._
 import akka.kafka.scaladsl._
 import akka.stream.scaladsl._
-import cloudflow.akkastream.internal.{HealthCheckFiles, StreamletExecutionImpl}
+import cloudflow.akkastream.internal.{ HealthCheckFiles, StreamletExecutionImpl }
 import cloudflow.akkastream.scaladsl._
 import com.typesafe.config._
 import cloudflow.streamlets._
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration.{ DurationInt, FiniteDuration }
 import KafkaHelper._
 
 /**
@@ -311,6 +311,7 @@ protected final class AkkaStreamletContextImpl(
   def committablePartitionedShardedSource[T, M, E](
       inlet: CodecInlet[T],
       shardEntity: Option[Entity[M, E]] = None,
+      entityIdExtractor: Option[M => String] = None,
       partitionAssignmentHandler: Option[PartitionAssignmentHandler] = None,
       kafkaTimeout: FiniteDuration = 10.seconds,
       maxParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] = {
@@ -346,11 +347,11 @@ protected final class AkkaStreamletContextImpl(
       system.log.info(
         s"Initializing cluster sharding ExternalShardAllocationStrategy for key: ${entity.typeKey.name} group: ${groupId(inlet, topic)} topic: ${topic.name}")
 
-      val messageExtractor: Future[KafkaClusterSharding.KafkaShardingMessageExtractor[M]] =
-        KafkaClusterSharding(system).messageExtractor(
+      val messageExtractor: Future[KafkaClusterSharding.KafkaShardingNoEnvelopeExtractor[M]] =
+        KafkaClusterSharding(system).messageExtractorNoEnvelope(
           topic = topic.name,
           timeout = kafkaTimeout,
-          //#todo entityIdExtractor = ,
+          entityIdExtractor = entityIdExtractor.get,
           settings = consumerSettings)
 
       messageExtractor.map { m =>

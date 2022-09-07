@@ -174,12 +174,10 @@ private[testkit] case class TestContext(
   def committablePartitionedShardedSource[T, M, E](
       inlet: CodecInlet[T],
       shardEntity: Option[Entity[M, E]] = None,
+      entityIdExtractor: Option[M => String] = None,
       partitionAssignmentHandler: Option[PartitionAssignmentHandler] = None,
       kafkaTimeout: FiniteDuration = 10.seconds,
-      maxParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] = {
-    //#todo
-    null.asInstanceOf[Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control]] //#todo
-  }
+      maxParallelism: Int = 20): Source[(TopicPartition, SourceWithCommittableOffsetContext[T]), Consumer.Control] = ???
 
   def plainSink[T](outlet: CodecOutlet[T]): Sink[T, NotUsed] = sinkRef[T](outlet).sink.contramap { el =>
     (el, TestCommittableOffset())
