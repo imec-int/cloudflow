@@ -22,24 +22,25 @@ import scala.collection.immutable
 import scala.concurrent._
 import scala.util._
 import akka._
-import akka.actor.{ ActorSystem, CoordinatedShutdown }
+import akka.actor.{ActorSystem, CoordinatedShutdown}
 import akka.annotation.InternalApi
 import akka.cluster.sharding.external.ExternalShardAllocationStrategy
 import akka.cluster.sharding.typed.scaladsl._
+import akka.cluster.sharding.typed.ClusterShardingSettings
 import akka.kafka._
 import akka.kafka.ConsumerMessage._
 import akka.kafka.internal.PartitionAssignmentHelpers
 import org.apache.kafka.common.TopicPartition
-import akka.kafka.cluster.sharding.KafkaClusterSharding
+import akka.kafka.cluster.sharding._
 import akka.kafka.scaladsl._
 import akka.stream.scaladsl._
-import cloudflow.akkastream.internal.{ HealthCheckFiles, StreamletExecutionImpl }
+import cloudflow.akkastream.internal.{HealthCheckFiles, StreamletExecutionImpl}
 import cloudflow.akkastream.scaladsl._
 import com.typesafe.config._
 import cloudflow.streamlets._
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.duration.{ DurationInt, FiniteDuration }
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import KafkaHelper._
 
 /**
@@ -343,12 +344,13 @@ protected final class AkkaStreamletContextImpl(
 
     shardEntity.map { entity =>
       system.log.info(
-        s"Initializing cluster sharding ExternalShardAllocationStrategy for key: ${entity.typeKey.name} topic: ${topic.name}")
+        s"Initializing cluster sharding ExternalShardAllocationStrategy for key: ${entity.typeKey.name} group: ${groupId(inlet, topic)} topic: ${topic.name}")
 
       val messageExtractor: Future[KafkaClusterSharding.KafkaShardingMessageExtractor[M]] =
         KafkaClusterSharding(system).messageExtractor(
           topic = topic.name,
           timeout = kafkaTimeout,
+          //#todo entityIdExtractor = ,
           settings = consumerSettings)
 
       messageExtractor.map { m =>
@@ -356,7 +358,8 @@ protected final class AkkaStreamletContextImpl(
           entity
             .withAllocationStrategy(entity.allocationStrategy
               .getOrElse(new ExternalShardAllocationStrategy(system, entity.typeKey.name)))
-            .withMessageExtractor(m))
+            .withMessageExtractor(m)
+            .withSettings(ClusterShardingSettings(system.toTyped)))
       }(system.dispatcher)
     }
 
