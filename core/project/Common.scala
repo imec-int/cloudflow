@@ -2,7 +2,6 @@ import org.scalafmt.sbt.ScalafmtPlugin.autoImport._
 import sbt.Keys._
 import sbt._
 import sbt.plugins.JvmPlugin
-import xerial.sbt.Sonatype.SonatypeKeys.sonatypePublishToBundle
 import com.jsuereth.sbtpgp.PgpKeys.useGpgAgent
 import com.lightbend.sbt.JavaFormatterPlugin.autoImport.javafmtOnCompile
 import sbtunidoc.GenJavadocPlugin.autoImport.unidocGenjavadocVersion
@@ -34,7 +33,14 @@ object Common extends AutoPlugin {
   override lazy val projectSettings = Seq(
     crossVersion := CrossVersion.binary,
     scalacOptions ++= List("-feature", "-deprecation"),
-    publishTo := sonatypePublishToBundle.value,
+    // publishTo := sonatypePublishToBundle.value,
+    publishTo := Some("imec-int cloudflow github packages" at "https://maven.pkg.github.com/imec-int/cloudflow"),
+    credentials += Credentials(
+      "imec-int cloudflow github packages",
+      "maven.pkg.github.com",
+      "imec-int",
+      sys.env.get("PACKAGES_TOKEN")
+    ),
     useGpgAgent := false,
     scalafmtOnCompile := true,
     // TODO: disabled since there are problems in cross JVMs compilation re-enable me possibly
