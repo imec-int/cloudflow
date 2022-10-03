@@ -30,16 +30,22 @@ object Common extends AutoPlugin {
           url("https://github.com/lightbend/cloudflow/graphs/contributors")),
       excludeLintKeys ++= Set(unidocGenjavadocVersion, useGpgAgent, publishMavenStyle, crossSbtVersions, javacOptions))
 
+  val packagesToken = sys.env.get("PACKAGES_TOKEN")
+
   override lazy val projectSettings = Seq(
     crossVersion := CrossVersion.binary,
     scalacOptions ++= List("-feature", "-deprecation"),
     // publishTo := sonatypePublishToBundle.value,
-    publishTo := Some("imec-int cloudflow github packages" at "https://maven.pkg.github.com/imec-int/cloudflow"),
+    publishTo := {
+      if (packagesToken.isEmpty || packagesToken == null)
+        sys.error("To publish you need to set 'PACKAGES_TOKEN'!!!")
+      Some("Github imec-int Apache Maven Packages" at "https://maven.pkg.github.com/imec-int/cloudflow")
+    },
     credentials += Credentials(
-      "imec-int cloudflow github packages",
+      "GitHub Package Registry", // =realm, is not arbitrary, though "" works too
       "maven.pkg.github.com",
       "imec-int",
-      sys.env.get("PACKAGES_TOKEN")
+      packagesToken.get
     ),
     useGpgAgent := false,
     scalafmtOnCompile := true,
