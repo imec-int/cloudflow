@@ -25,7 +25,7 @@ import akka.cluster.sharding.typed.scaladsl.{ ClusterSharding, Entity }
 import akka.stream.scaladsl._
 import akka.kafka._
 import akka.kafka.ConsumerMessage._
-import akka.kafka.scaladsl.{ Consumer, PartitionAssignmentHandler }
+import akka.kafka.scaladsl._
 import com.typesafe.config.Config
 import cloudflow.streamlets._
 import cloudflow.akkastream.scaladsl._
